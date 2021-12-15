@@ -15,11 +15,11 @@ program lr_xy
     !use lapack95
     implicit none
     include "mpif.h"
-    integer :: i, j, k, n_warmup, mcs, isite, ierr, myrank, np, ss, len, status
+    integer :: i, j, k, n_warmup, mcs, isite, ierr, myrank, np, ss, len, status, ir
     integer, dimension(:), allocatable :: seed
     real(8) :: beta, r, energy, e1, e2, de, x, theta_old, en, en2, nen, een, pars(60), ee(3), &
                stiffness, stiff, stiff1, delta_theta, delta_t
-    character(len=20) :: arg1,arg2,filename
+    character(len=20) :: arg1,arg2,filename,cir
 
     call MPI_INIT(ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
@@ -47,7 +47,10 @@ program lr_xy
         else
             pbc = .false.
         endif
-        filename = 'en_'//trim(arg1)//'_'//trim(arg2)//'.dat'
+        call random_number(r) ! losowa czesc nazwy
+        ir = int(1000000*r)
+        read(cir,'(i0.6)') ir
+        filename = 'en_'//trim(arg1)//'_'//trim(arg2)//cir//'.dat'
         open(10,file = filename)
     endif
     call MPI_Bcast(N, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
