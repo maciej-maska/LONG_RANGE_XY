@@ -19,7 +19,8 @@ program lr_xy
     integer, dimension(:), allocatable :: seed
     real(8) :: beta, r, energy, e1, e2, de, x, theta_old, en, en2, nen, een, pars(60), ee(3), &
                stiffness, stiff, stiff1, delta_theta, delta_t
-    character(len=20) :: arg1,arg2,filename,cir
+    character(len=20) :: arg1,arg2,filename
+    character(len=6) :: cir
 
     call MPI_INIT(ierr)
     call MPI_COMM_SIZE(MPI_COMM_WORLD, np, ierr)
@@ -31,12 +32,7 @@ program lr_xy
     endif
 
     call MPI_COMM_RANK(MPI_COMM_WORLD, myrank, ierr)
-    call RANDOM_SEED(SIZE=n)
-    allocate(seed(n))
-    call system_clock(ss)
-    call random_seed(get = seed)
-    seed = myrank * seed + abs( mod((ss*181), 104729))
-    call random_seed(put = seed)
+    call random_seed()
 
     if (myrank == 0) then
         call get_command_argument(1, arg1, len, status)
@@ -48,9 +44,10 @@ program lr_xy
             pbc = .false.
         endif
         call random_number(r) ! losowa czesc nazwy
-        ir = int(1000000*r)
-        read(cir,'(i0.6)') ir
-        filename = 'en_'//trim(arg1)//'_'//trim(arg2)//cir//'.dat'
+        ir = int(1000000.*r)
+        write(cir,'(i0.6)') ir
+        print *,'A',cir,ir,r
+        filename = 'en_'//trim(arg1)//'_'//trim(arg2)//'_'//cir//'.dat'
         open(10,file = filename)
     endif
     call MPI_Bcast(N, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
