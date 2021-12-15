@@ -5,6 +5,9 @@ module configuration
     integer :: N
     real(8), dimension (:), allocatable :: theta   
     real(4) :: temperature
+    real(4), parameter :: t_min = 0.05, &
+                          t_max = 1.2
+    integer, parameter :: mc_runs = 10
 end module configuration
 
 program lr_xy
@@ -14,7 +17,8 @@ program lr_xy
     include "mpif.h"
     integer :: i, j, k, n_warmup, mcs, isite, ierr, myrank, np, ss, len, status
     integer, dimension(:), allocatable :: seed
-    real(8) :: beta, r, energy, e1, e2, de, x, theta_old, en, en2, nen, een, pars(60), ee(3), stiffness, stiff, stiff1
+    real(8) :: beta, r, energy, e1, e2, de, x, theta_old, en, en2, nen, een, pars(60), ee(3), &
+               stiffness, stiff, stiff1, delta_theta, delta_t
     character(len=20) :: arg1,arg2,filename
 
     call MPI_INIT(ierr)
@@ -49,14 +53,15 @@ program lr_xy
     call MPI_Bcast(N, 1, MPI_INTEGER, 0, MPI_COMM_WORLD, ierr)
     call MPI_Bcast(pbc, 1, MPI_LOGICAL, 0, MPI_COMM_WORLD, ierr)
 
-    temperature = 0.05 + 0.05 * myrank ! 24 procesow => 0.05 <= T <= 1.2
+    delta_t = (t_max - t_min)/(np - 1)
+    temperature = t_min + delta_t * myrank ! 24 procesow => 0.05 <= T <= 1.2
     allocate(theta(N))
     beta = 1._8/temperature
     n_warmup = 10000*N
     een = 0._8
     en2 = 0._8
     stiff1 = 0._8
-    do k = 1, 10
+    do k = 1, mc_runs
         if (pbc) then
             theta = 0
         else
@@ -73,8 +78,9 @@ program lr_xy
             call random_number(x)
             isite = int((N-2)*x+2)     ! tylko wewnetrzne wezly sa losowane
             theta_old = theta(isite)
-            call random_number(theta(isite))
-            theta(isite) = pi2 * theta(isite)
+            call random_number(delta_theta)
+            delta_theta = pi2 * (delta_theta-0.5) * temperature/t_max ! maksymalna zmiana theta rosnie liniowo z temperatura
+            theta(isite) = mod(theta_old + delta_theta, pi2)
             e2 = energy()
             if (e2 < e1) then
                 e1 = e2
@@ -96,13 +102,13 @@ program lr_xy
         en2 = en2 + (en/nen)**2
         stiff1 = stiff1 + stiff/nen
 enddo
-    ee(1) = een/10                  ! energy averaged over 10 MC runs
-    ee(2) = sqrt(en2/10-ee(1)**2)   ! energy fluctuations between different runs
+    ee(1) = een/mc_runs                  ! energy averaged over mc_runs MC runs
+    ee(2) = sqrt(en2/mc_runs-ee(1)**2)   ! energy fluctuations between different runs
     ee(3) = stiff1
     call MPI_Gather(ee, 3, MPI_DOUBLE, pars, 3, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
     if (myrank == 0) then
         do i = 1, np
-            write(10,'(f10.4,3f15.6)') 0.05 + 0.05*(i-1),pars(3*(i-1)+1),pars(3*(i-1)+2),pars(3*(i-1)+3)
+            write(10,'(f10.4,3f15.6)') t_min + delta_t*(i-1),pars(3*(i-1)+1),pars(3*(i-1)+2),pars(3*(i-1)+3)
         enddo
         close(10)
     endif
