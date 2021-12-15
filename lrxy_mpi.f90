@@ -46,7 +46,6 @@ program lr_xy
         call random_number(r) ! losowa czesc nazwy
         ir = int(1000000.*r)
         write(cir,'(i0.6)') ir
-        print *,'A',cir,ir,r
         filename = 'en_'//trim(arg1)//'_'//trim(arg2)//'_'//cir//'.dat'
         open(10,file = filename)
     endif
