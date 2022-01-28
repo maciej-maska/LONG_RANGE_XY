@@ -113,7 +113,7 @@ enddo
     ee(1) = een/mc_runs                  ! energy averaged over mc_runs MC runs
     ee(2) = sqrt(en2/mc_runs-ee(1)**2)   ! energy fluctuations between different runs
     ee(3) = stiff1/mc_runs
-    ee(4) = eenw/mc_runs
+    ee(4) = eenw/mc_runs                 ! energy with winding
     call MPI_Gather(ee, 4, MPI_DOUBLE, pars, 4, MPI_DOUBLE, 0, MPI_COMM_WORLD, ierr)
     if (myrank == 0) then
         do i = 1, np
